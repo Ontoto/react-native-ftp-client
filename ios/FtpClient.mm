@@ -227,6 +227,7 @@ RCT_REMAP_METHOD(uploadFile,
                  resolver:(RCTPromiseResolveBlock)resolve
                  rejecter:(RCTPromiseRejectBlock)reject)
 {
+    localPath = [localPath stringByReplacingOccurrencesOfString:@"file://" withString:@""];
     if([[NSFileManager defaultManager] fileExistsAtPath:localPath] == NO)
     {
         reject(RNFTPCLIENT_ERROR_CODE_UPLOAD,@"local file is not exist",nil);
@@ -380,6 +381,8 @@ RCT_REMAP_METHOD(downloadFile,
                  resolver:(RCTPromiseResolveBlock)resolve
                  rejecter:(RCTPromiseRejectBlock)reject)
 {
+    // Strip file:// from start
+    localPath = [localPath stringByReplacingOccurrencesOfString:@"file://" withString:@""];
     NSLog(@"downloadFile %@<=%@",localPath,remotePath);
     NSString* token = [self makeDownloadTokenByLocalPath:localPath andRemotePath:remotePath];
     if(self->downloadTokens[token]){
@@ -398,8 +401,11 @@ RCT_REMAP_METHOD(downloadFile,
     NSString* localFilePath = [self getLocalFilePath:localPath fromRemotePath:remotePath];
     if([[NSFileManager defaultManager] fileExistsAtPath:localFilePath] == YES)
     {
-        reject(RNFTPCLIENT_ERROR_CODE_DOWNLOAD,@"local file is exist",nil);
-        return ;
+        NSError *error = nil;
+        if (![[NSFileManager defaultManager] removeItemAtPath:localFilePath error:&error]) {
+            reject(RNFTPCLIENT_ERROR_CODE_DOWNLOAD,@"failed to delete existing file",nil);
+            return;
+        }
     }
     LxFTPRequest *request = [LxFTPRequest downloadRequest];
     NSURL* serverURL = [[NSURL URLWithString:self->url] URLByAppendingPathComponent:remotePath];
@@ -474,4 +480,3 @@ RCT_REMAP_METHOD(cancelDownloadFile,
     resolve([NSNumber numberWithBool:TRUE]);
 }
 @end
-  
